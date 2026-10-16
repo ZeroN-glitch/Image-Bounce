@@ -1,0 +1,55 @@
+# =============================================================================
+#  _config.yml · GitHub Pages（Jekyll）站点配置
+#
+#  仓库内容：index.html（工具本体，无 front matter）
+#            _config.yml（本文件）
+#
+#  说明：index.html 没有 YAML front matter，Jekyll 会把它当静态文件**原样发布**，
+#        所以这里不需要主题（theme）、导航（header_pages）、Markdown 之类的配置——
+#        那些只在“带 front matter 的页面”上生效，写了也是空转。
+#        保留本文件是为了：站点元信息 + 排除不想发布的文件。
+#        以后如果往仓库里加 .md 页面，把文件末尾「可选」区块打开即可。
+# =============================================================================
+
+# ------------------------------ 站点信息 -------------------------------------
+title: "图片Q弹回弹"
+description: >-
+  上传一张图片，点一下让它像果冻一样连续弹跳，再点一下停下；
+  内置 GIF 编码器、零外部依赖，浏览器直接打开就能玩，还能导出可循环播放的 GIF。
+lang: "zh-CN"
+timezone: "Asia/Shanghai"
+
+# ------------------------------ 站点地址（可选）------------------------------
+# 项目站点（普通仓库，地址形如 https://<用户名>.github.io/<仓库名>）：
+#   url: "https://<用户名>.github.io"
+#   baseurl: "/<仓库名>"
+# 用户/组织站点（仓库名形如 <用户名>.github.io）：baseurl 留空
+# 纯静态站点里这两个值不影响页面本身，只影响 Jekyll 生成物里的绝对链接
+url: ""
+baseurl: ""
+
+# ------------------------------ 不发布的内容 ---------------------------------
+# 仓库里出现这些文件时，不要把它们发到站点上
+exclude:
+  - "README.md"          # 仓库说明：GitHub 仓库页会显示，但不需要出现在站点里
+  - "Gemfile"
+  - "Gemfile.lock"
+  - "node_modules/"
+  - "vendor/"
+  - "*.cjs"
+  - "*.py"
+
+# ------------------------------ 可选（以后加 .md 页面再打开）------------------
+# plugins:
+#   - jekyll-sitemap              # 生成 /sitemap.xml，便于搜索引擎收录（白名单内）
+#   - jekyll-seo-tag              # 页面 <head> 注入 SEO 元信息（白名单内）
+# theme: minima                   # 白名单主题；只有带 front matter 的页面会用到
+# markdown: kramdown
+# kramdown:
+#   input: GFM                    # 想渲染 Markdown 表格就必须开 GFM
+# defaults:
+#   - scope:
+#       path: ""
+#       type: "pages"
+#     values:
+#       layout: "default"

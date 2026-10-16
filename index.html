@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片Q弹回弹 · 连弹版</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --bg: #eaeefb;
+    --g1: #d9e4ff;
+    --g2: #f0e6ff;
+    --card: #ffffff;
+    --card-2: #f7f9ff;
+    --ink: #18203a;
+    --ink-2: #59628a;
+    --ink-3: #8f97b6;
+    --line: #e7ecf9;
+    --track: #e6ebf8;
+    --dots: #dde4f4;
+    --brand: #4f6ef7;
+    --brand-2: #7b5cf6;
+    --go: #10b981;
+    --warn: #f59e0b;
+    --shadow-lg: 0 30px 70px -30px rgba(28,44,104,.45);
+    --shadow-md: 0 14px 34px -18px rgba(28,44,104,.5);
+    --shadow-sm: 0 3px 10px -4px rgba(28,44,104,.4);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1120;
+      --g1: #17224a;
+      --g2: #2a1d4d;
+      --card: #151b2c;
+      --card-2: #1a2136;
+      --ink: #eef1fb;
+      --ink-2: #a9b2d3;
+      --ink-3: #7b85ab;
+      --line: #26304c;
+      --track: #2a3352;
+      --dots: #232c48;
+      --shadow-lg: 0 30px 70px -30px rgba(0,0,0,.85);
+      --shadow-md: 0 14px 34px -18px rgba(0,0,0,.75);
+      --shadow-sm: 0 3px 10px -4px rgba(0,0,0,.6);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    padding: 28px 20px 34px;
+    color: var(--ink);
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(900px 520px at 6% -12%, var(--g1), transparent 62%),
+      radial-gradient(760px 440px at 100% 2%, var(--g2), transparent 58%),
+      var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 外壳 ---------- */
+  .app {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .top { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+
+  .logo {
+    flex: none;
+    width: 46px; height: 46px;
+    display: grid; place-items: center;
+    font-size: 22px;
+    border-radius: 15px;
+    background: linear-gradient(140deg, var(--brand), var(--brand-2));
+    box-shadow: 0 12px 26px -12px var(--brand);
+  }
+
+  h1 { margin: 0; font-size: 21px; letter-spacing: .2px; }
+  .sub { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-2); }
+
+  .pill {
+    margin-left: auto;
+    flex: none;
+    padding: 6px 11px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--go);
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(16,185,129,.3);
+    border-radius: 999px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+    align-items: start;
+  }
+  .layout > * { min-width: 0; }   /* 关键：否则网格项会被画布固有宽度撑破，移动端横向溢出 */
+
+  .stage-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+  /* ---------- 画布区 ---------- */
+  .stage {
+    position: relative;
+    min-height: 440px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background-color: var(--card-2);
+    background-image: radial-gradient(var(--dots) 1.2px, transparent 1.2px);
+    background-size: 20px 20px;
+    transition: box-shadow .25s ease, border-color .25s ease;
+  }
+  .stage.dragging {
+    border-color: var(--brand);
+    box-shadow: inset 0 0 0 3px rgba(79,110,247,.16);
+  }
+  .stage.running {
+    border-color: rgba(123,92,246,.35);
+    box-shadow: 0 18px 50px -30px rgba(123,92,246,.95);
+  }
+
+  .stage canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 68vh;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    touch-action: none;
+    outline: none;
+  }
+  .stage canvas:focus-visible {
+    box-shadow: var(--shadow-md), 0 0 0 3px rgba(79,110,247,.45);
+  }
+
+  .empty {
+    max-width: 340px;
+    text-align: center;
+    color: var(--ink-2);
+  }
+  .empty .icon {
+    width: 68px; height: 68px;
+    margin: 0 auto 16px;
+    display: grid; place-items: center;
+    font-size: 30px;
+    border-radius: 22px;
+    background: var(--card);
+    border: 1px dashed var(--dots);
+    box-shadow: var(--shadow-sm);
+  }
+  .empty b { display: block; margin-bottom: 8px; font-size: 16px; color: var(--ink); }
+  .empty span { font-size: 13px; line-height: 1.8; }
+
+  .hint {
+    display: none;
+    margin: 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .stage.ready + .hint { display: block; }
+
+  /* ---------- 控制面板 ---------- */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: linear-gradient(135deg, #6b88fb, var(--brand));
+    box-shadow: 0 12px 24px -12px rgba(79,110,247,1);
+  }
+  .btn-go {
+    background: linear-gradient(135deg, var(--brand-2), #6366f1);
+    box-shadow: 0 12px 24px -12px rgba(123,92,246,1);
+  }
+  .btn-go.on {
+    background: linear-gradient(135deg, #f87171, #ef4444);
+    box-shadow: 0 12px 24px -12px rgba(239,68,68,1);
+  }
+  .btn-ghost {
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-sm);
+  }
+  .btn:hover { filter: brightness(1.05); }
+  .btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .hr { height: 1px; background: var(--line); margin: 2px 0; }
+
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .field-head label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .field-head output {
+    padding: 2px 8px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--brand);
+    background: rgba(79,110,247,.12);
+    border-radius: 999px;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 22px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+      var(--brand) 0 var(--fill, 50%),
+      var(--track) var(--fill, 50%) 100%);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    margin-top: -6px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--brand);
+    box-shadow: 0 2px 8px -2px rgba(28,44,104,.6);
+    transition: transform .12s ease;
+  }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.15); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--track); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--brand); }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--brand);
+  }
+  input[type=range]:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 999px; }
+
+  .status {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    min-height: 42px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    word-break: break-word;
+  }
+  .status::before {
+    content: "";
+    flex: none;
+    width: 8px; height: 8px;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: var(--ink-3);
+    transition: background .2s ease;
+  }
+  .status[data-kind="busy"]::before { background: var(--brand); animation: pulse 1.1s ease-in-out infinite; }
+  .status[data-kind="go"]::before { background: var(--brand-2); animation: pulse .8s ease-in-out infinite; }
+  .status[data-kind="ok"]::before { background: var(--go); }
+  .status[data-kind="warn"]::before { background: var(--warn); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.75); }
+  }
+
+  .tips { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .tips li {
+    position: relative;
+    padding-left: 15px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--ink-3);
+  }
+  .tips li::before {
+    content: "";
+    position: absolute;
+    left: 2px; top: 7px;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .55;
+  }
+
+  @media (max-width: 900px) {
+    body { padding: 16px 12px 26px; }
+    .app { padding: 16px; border-radius: 20px; }
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .stage { min-height: 340px; padding: 12px; }
+    .top { gap: 10px; }
+    .pill { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="logo">🎯</div>
+    <div>
+      <h1>图片Q弹回弹</h1>
+      <p class="sub">点一下让它弹起来 · 连弹循环 · GIF 离线导出</p>
+    </div>
+    <span class="pill">● 离线可用</span>
+  </header>
+
+  <div class="layout">
+    <div class="stage-col">
+      <div class="stage" id="stage">
+        <div id="emptyTip" class="empty">
+          <div class="icon">🖼️</div>
+          <b>把图片拖到这里</b>
+          <span>或点击右侧「上传图片」<br>支持 PNG / JPG / WebP / GIF</span>
+        </div>
+        <canvas id="canvas" style="display:none;"></canvas>
+      </div>
+      <p class="hint">点击画面开始 / 停止连弹 · 画布聚焦时空格也行</p>
+    </div>
+
+    <aside class="panel">
+      <input type="file" id="fileInput" accept="image/*" hidden />
+      <button id="uploadBtn" class="btn btn-primary">📁 上传图片</button>
+      <button id="bounceBtn" class="btn btn-go">👆 开始连弹</button>
+      <button id="gifBtn" class="btn btn-ghost">💾 导出 GIF</button>
+
+      <div class="hr"></div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="strength">弹力强度</label>
+          <output id="strengthOut">0.70</output>
+        </div>
+        <input type="range" id="strength" min="0.1" max="0.8" step="0.01" value="0.70" />
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="damping">回弹阻尼</label>
+          <output id="dampingOut">0.92</output>
+        </div>
+        <input type="range" id="damping" min="0.8" max="0.98" step="0.01" value="0.92" />
+      </div>
+
+      <div class="field">
+        <div class="field-head">
+          <label for="speed">动画速度</label>
+          <output id="speedOut">1.00</output>
+        </div>
+        <input type="range" id="speed" min="0.3" max="2" step="0.05" value="1" />
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="status" id="status" role="status" aria-live="polite" data-kind="idle">等待上传图片...</div>
+
+      <ul class="tips">
+        <li>点画面或按钮开始连弹，再点一次停止</li>
+        <li>画布聚焦时，空格 / 回车 也能切换</li>
+        <li>阻尼越大落地压得越深、弹性越久</li>
+        <li>GIF 会录整数个完整循环，可直接循环播放</li>
+        <li>编码器内置，离线也能导出（最长边缩到 480px）</li>
+      </ul>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ========= 元素 =========
+  const fileInput = document.getElementById('fileInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const bounceBtn = document.getElementById('bounceBtn');
+  const gifBtn = document.getElementById('gifBtn');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const emptyTip = document.getElementById('emptyTip');
+  const status = document.getElementById('status');
+  const strengthInput = document.getElementById('strength');
+  const dampingInput = document.getElementById('damping');
+  const speedInput = document.getElementById('speed');
+
+  // ========= 界面：状态显示 / 滑杆读数 / 拖拽上传 / 键盘操作 =========
+  const stage = document.getElementById('stage');
+
+  function setStatus(text, kind) {
+    status.textContent = text;
+    if (status.setAttribute) status.setAttribute('data-kind', kind || 'idle');
+  }
+
+  function setRunning(on) {
+    if (stage && stage.classList) stage.classList.toggle('running', !!on);
+  }
+
+  function bindSlider(input, out) {
+    const lo = Number.isFinite(Number(input.min)) ? Number(input.min) : 0;
+    const hiRaw = Number(input.max);
+    const hi = (Number.isFinite(hiRaw) && hiRaw > lo) ? hiRaw : 1;
+    const sync = () => {
+      const v = Number(input.value);
+      if (!Number.isFinite(v)) return;
+      if (out) out.textContent = v.toFixed(2);
+      if (input.style && input.style.setProperty) {
+        input.style.setProperty('--fill', (((v - lo) / (hi - lo)) * 100).toFixed(1) + '%');
+      }
+    };
+    input.addEventListener('input', sync);
+    input.addEventListener('change', sync);
+    sync();
+  }
+  bindSlider(strengthInput, document.getElementById('strengthOut'));
+  bindSlider(dampingInput, document.getElementById('dampingOut'));
+  bindSlider(speedInput, document.getElementById('speedOut'));
+
+  if (stage) {
+    ['dragenter', 'dragover'].forEach((t) => stage.addEventListener(t, (e) => {
+      e.preventDefault();
+      if (stage.classList) stage.classList.add('dragging');
+    }));
+    ['dragleave', 'dragend', 'drop'].forEach((t) => stage.addEventListener(t, () => {
+      if (stage.classList) stage.classList.remove('dragging');
+    }));
+    stage.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const dropped = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!dropped) return;
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(dropped);
+        fileInput.files = dt.files;
+      } catch (err) {
+        fileInput.files = e.dataTransfer.files;   // 老浏览器的退路
+      }
+      fileInput.dispatchEvent(new Event('change'));
+    });
+  }
+
+  // 画布可聚焦，空格 / 回车 也能切换连弹
+  canvas.setAttribute('tabindex', '0');
+  canvas.setAttribute('role', 'button');
+  canvas.setAttribute('aria-label', '开始或停止连续弹跳');
+  canvas.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter' || e.key === 'Spacebar') {
+      e.preventDefault();
+      toggleBounce();
+    }
+  });
+
+  // ========= 物理与几何常量（时间单位为「秒」，与真实帧率无关）=========
+  const SPRING_K = 200;              // 弹簧刚度：ω=√K≈14.1 rad/s → 一次弹跳约 0.44s
+  const V0 = 14;                     // 初速度：峰值位移≈V0/ω≈1（归一化单位）
+  const PEAK = V0 / Math.sqrt(SPRING_K);
+  const LIFT_RATIO = 0.10;           // 峰值上跳高度 = 画布高的 10%
+  const HEAD_ROOM = 1.4;             // 画布比图片高 40%，给竖直拉伸留余量，保证不被裁切
+  const SQUASH_MIN = 0.80;
+  const SQUASH_MAX = 1.25;
+  const SQUASH_GAIN = 0.35;          // 强度滑杆 → 挤压幅度（0.7 时竖直拉伸约 ±23%）
+  const MAX_DT = 0.05;               // 单帧步长上限，切标签页回来不会瞬移
+  const EPS_V = 0.05, EPS_P = 0.01;  // 收敛判定阈值
+  const BOUNCE_GAP_SEC = 0.12;       // 连弹时若已完全停下，歇这么久再起跳
+
+  // ========= GIF 导出参数 =========
+  const GIF_MAX_SIDE = 480;          // GIF 画布最长边（越小文件越小、编码越快）
+  const GIF_MAX_COLORS = 256;        // 调色板颜色数
+
+  // ========= 状态 =========
+  let img = null, imgW = 0, imgH = 0, hasImage = false;
+  let position = 0, velocity = 0;    // position 为归一化位移，1 ≈ 峰值
+  let isAnimating = false;           // 是否有动画在跑
+  let isLooping = false;             // 连弹模式
+  let isRecording = false;           // GIF 导出中（暂停实时循环）
+  let bounceCount = 0;               // 已完成的弹跳次数
+  let settleTime = 0;                // 已收敛持续时长（连弹时用来安排下一次起跳）
+  let finishing = false;             // 用户已点停止，正在快速收住
+  let lastTime = 0, frameNo = 0;
+
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ========= 物理步进（实时循环和 GIF 录制共用同一套公式）=========
+  // sdt: 本步时间（秒，已含速度滑杆缩放）；looping: 是否连弹
+  // 返回 true 表示这一步重新起跳了
+  function inject() {
+    position = 0;
+    velocity = V0;
+    bounceCount++;
+    return true;
+  }
+
+  function stepPhysics(sdt, damping, looping) {
+    const prev = position;
+    velocity += -SPRING_K * position * sdt;
+    velocity *= Math.pow(damping, sdt * 60);        // 阻尼按 60fps 归一，滑杆手感稳定
+    position += velocity * sdt;
+    position = clamp(position, -PEAK * 1.5, PEAK * 1.5);
+
+    if (!looping) return false;
+
+    // 连弹点：落地压扁后重新向上、穿过静止位的瞬间补一次冲量
+    // → 每次都从同一个状态(0, V0)起跳，所以每下弹跳高度一致
+    if (prev < 0 && position >= 0 && velocity > 0) {
+      settleTime = 0;
+      return inject();
+    }
+    // 兜底：阻尼很大时可能压不到静止位以下，那就等它彻底停稳再歇一拍起跳
+    if (Math.abs(velocity) < EPS_V && Math.abs(position) < EPS_P) {
+      settleTime += sdt;
+      if (settleTime >= BOUNCE_GAP_SEC) {
+        settleTime = 0;
+        return inject();
+      }
+    } else {
+      settleTime = 0;
+    }
+    return false;
+  }
+
+  // ====== GIF-ENCODER-START ======
+  // 内置 GIF89a 编码器：中位切分调色板 + k-means 精修 + 有序抖动 + LZW。纯函数、无依赖、无 Worker。
+  const GIF_DITHER_AMP = 8;          // 有序抖动强度（0=关，4=体积更小，8/12=抗色带更稳）
+  const GIF_REFINE_ITERS = 3;        // 调色板 k-means 精修轮数（0 = 只用中位切分）
+  const GIF_CACHE_BITS = 5;          // 最近色缓存位数/通道（5=32768 格，6 更准但更慢）
+  const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+  function boxStat(list) {
+    let rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0, total = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e.r < rmin) rmin = e.r; if (e.r > rmax) rmax = e.r;
+      if (e.g < gmin) gmin = e.g; if (e.g > gmax) gmax = e.g;
+      if (e.b < bmin) bmin = e.b; if (e.b > bmax) bmax = e.b;
+      total += e.n;
+    }
+    const dr = rmax - rmin, dg = gmax - gmin, db = bmax - bmin;
+    return {
+      total, range: Math.max(dr, dg, db),
+      ch: (dr >= dg && dr >= db) ? 'r' : (dg >= db ? 'g' : 'b')
+    };
+  }
+
+  // samples: 若干帧的 RGBA 数据（Uint8ClampedArray）数组；返回 [[r,g,b], ...]
+  function buildPalette(samples, maxColors) {
+    const hist = new Uint32Array(32768);
+    const sr = new Uint32Array(32768), sg = new Uint32Array(32768), sb = new Uint32Array(32768);
+    for (let s = 0; s < samples.length; s++) {
+      const px = samples[s];
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i + 3] < 128) continue;
+        const k = ((px[i] >> 3) << 10) | ((px[i + 1] >> 3) << 5) | (px[i + 2] >> 3);
+        hist[k]++; sr[k] += px[i]; sg[k] += px[i + 1]; sb[k] += px[i + 2];
+      }
+    }
+    const first = [];
+    for (let k = 0; k < 32768; k++) {
+      if (hist[k]) first.push({ n: hist[k], r: sr[k] / hist[k], g: sg[k] / hist[k], b: sb[k] / hist[k] });
+    }
+    if (!first.length) return [[255, 255, 255]];
+
+    const boxes = [{ list: first, stat: boxStat(first) }];
+    while (boxes.length < maxColors) {
+      let bi = -1, bestScore = -1;
+      for (let i = 0; i < boxes.length; i++) {
+        const b = boxes[i];
+        if (b.list.length < 2) continue;
+        const score = b.stat.range * Math.log(b.stat.total + 1);   // 兼顾色域体积与像素数
+        if (score > bestScore) { bestScore = score; bi = i; }
+      }
+      if (bi < 0) break;
+      const box = boxes[bi];
+      const ch = box.stat.ch;
+      box.list.sort((x, y) => x[ch] - y[ch]);
+      let acc = 0, cut = 0;
+      for (let i = 0; i < box.list.length - 1; i++) {
+        acc += box.list[i].n;
+        if (acc >= box.stat.total / 2) { cut = i + 1; break; }
+      }
+      if (cut <= 0) cut = 1;
+      if (cut >= box.list.length) cut = box.list.length - 1;
+      const l = box.list.slice(0, cut), r = box.list.slice(cut);
+      boxes.splice(bi, 1, { list: l, stat: boxStat(l) }, { list: r, stat: boxStat(r) });
+    }
+    return refinePalette(first, boxes.map((b) => {
+      let n = 0, R = 0, G = 0, B = 0;
+      for (let i = 0; i < b.list.length; i++) {
+        const e = b.list[i];
+        n += e.n; R += e.r * e.n; G += e.g * e.n; B += e.b * e.n;
+      }
+      return [R / n, G / n, B / n];
+    }));
+  }
+
+  // 在 15bit 直方图上做几轮 k-means，明显好于纯中位切分（照片渐变处更少色块）
+  function refinePalette(buckets, cent) {
+    for (let it = 0; it < GIF_REFINE_ITERS; it++) {
+      const K = cent.length;
+      const sumR = new Float64Array(K), sumG = new Float64Array(K), sumB = new Float64Array(K), cnt = new Float64Array(K);
+      for (let i = 0; i < buckets.length; i++) {
+        const e = buckets[i];
+        let bi = 0, bd = Infinity;
+        for (let k = 0; k < K; k++) {
+          const c = cent[k];
+          const dr = e.r - c[0], dg = e.g - c[1], db = e.b - c[2];
+          const d = dr * dr * 3 + dg * dg * 6 + db * db;
+          if (d < bd) { bd = d; bi = k; }
+        }
+        sumR[bi] += e.r * e.n; sumG[bi] += e.g * e.n; sumB[bi] += e.b * e.n; cnt[bi] += e.n;
+      }
+      for (let k = 0; k < K; k++) {
+        if (cnt[k] > 0) cent[k] = [sumR[k] / cnt[k], sumG[k] / cnt[k], sumB[k] / cnt[k]];
+      }
+    }
+    return cent.map((c) => [Math.round(c[0]), Math.round(c[1]), Math.round(c[2])]);
+  }
+
+  // N 位/通道的颜色缓存 + 感知加权最近色查找
+  function makeMapper(palette) {
+    const B = GIF_CACHE_BITS, shift = 8 - B;
+    const cache = new Int16Array(1 << (B * 3)).fill(-1);
+    const n = palette.length;
+    return function map(r, g, b) {
+      r = r < 0 ? 0 : (r > 255 ? 255 : r | 0);
+      g = g < 0 ? 0 : (g > 255 ? 255 : g | 0);
+      b = b < 0 ? 0 : (b > 255 ? 255 : b | 0);
+      const key = ((r >> shift) << (B * 2)) | ((g >> shift) << B) | (b >> shift);
+      const hit = cache[key];
+      if (hit >= 0) return hit;
+      let best = 0, bestD = Infinity;
+      for (let i = 0; i < n; i++) {
+        const p = palette[i];
+        const dr = r - p[0], dg = g - p[1], db = b - p[2];
+        const d = dr * dr * 3 + dg * dg * 6 + db * db;     // 绿>红>蓝 的近似感知权重
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      cache[key] = best;
+      return best;
+    };
+  }
+
+  // RGBA → 调色板索引（带 4x4 有序抖动，减轻照片渐变处的色带）
+  function quantizeFrame(rgba, width, height, map) {
+    const out = new Uint8Array(width * height);
+    let p = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++, p++) {
+        const i = p * 4;
+        const t = (BAYER4[((y & 3) << 2) | (x & 3)] - 7.5) * GIF_DITHER_AMP / 8;
+        out[p] = map(rgba[i] + t, rgba[i + 1] + t, rgba[i + 2] + t);
+      }
+    }
+    return out;
+  }
+
+  function paletteBits(palette) {
+    let b = 2;
+    while ((1 << b) < palette.length) b++;
+    return b;                                    // ≥2，GIF 要求最小码长至少 2
+  }
+
+  function gifHeader(width, height, palette) {
+    const bits = paletteBits(palette), gctSize = 1 << bits;
+    const head = new Uint8Array(13 + gctSize * 3);
+    let o = 0;
+    const put = (v) => { head[o++] = v & 0xff; };
+    const sig = 'GIF89a';
+    for (let i = 0; i < sig.length; i++) put(sig.charCodeAt(i));
+    put(width); put(width >> 8);
+    put(height); put(height >> 8);
+    put(0xf0 | (bits - 1));                      // 全局调色板 + 颜色深度8 + 表大小
+    put(0); put(0);                              // 背景色索引、像素宽高比
+    for (let i = 0; i < gctSize; i++) {
+      const c = palette[i] || [0, 0, 0];
+      put(c[0]); put(c[1]); put(c[2]);
+    }
+    return { bits, head };
+  }
+
+  function gifLoopExt() {                        // NETSCAPE2.0 无限循环
+    return new Uint8Array([0x21, 0xff, 0x0b, 78, 69, 84, 83, 67, 65, 80, 69, 50, 46, 48,
+                           0x03, 0x01, 0x00, 0x00, 0x00]);
+  }
+
+  function gifFrameParts(width, height, indices, delayCs, bits) {
+    const gce = new Uint8Array([0x21, 0xf9, 0x04, 0x04,
+                                delayCs & 0xff, (delayCs >> 8) & 0xff, 0x00, 0x00]);
+    const id = new Uint8Array([0x2c, 0, 0, 0, 0,
+                               width & 0xff, (width >> 8) & 0xff,
+                               height & 0xff, (height >> 8) & 0xff, 0x00]);
+    return [gce, id, lzwEncode(indices, bits)];
+  }
+
+  function gifTrailer() { return new Uint8Array([0x3b]); }
+
+  // GIF 变体 LZW（码长增长规则与主流解码器一致）
+  function lzwEncode(indices, minCodeSize) {
+    const clearCode = 1 << minCodeSize, eoiCode = clearCode + 1;
+    let codeSize = minCodeSize + 1, nextCode = eoiCode + 1, dict = new Map();
+    let body = new Uint8Array(Math.max(4096, indices.length >> 1));
+    let bl = 0;
+    const pushByte = (v) => {
+      if (bl === body.length) { const nb = new Uint8Array(body.length * 2); nb.set(body); body = nb; }
+      body[bl++] = v;
+    };
+    let bitBuf = 0, bitCnt = 0;
+    const emit = (code) => {
+      bitBuf |= code << bitCnt;
+      bitCnt += codeSize;
+      while (bitCnt >= 8) { pushByte(bitBuf & 0xff); bitBuf >>= 8; bitCnt -= 8; }
+    };
+
+    emit(clearCode);
+    let prefix = indices[0];
+    for (let i = 1; i < indices.length; i++) {
+      const k = indices[i];
+      const key = (prefix << 8) | k;
+      const found = dict.get(key);
+      if (found !== undefined) { prefix = found; continue; }
+      emit(prefix);
+      if (nextCode === 4096) {
+        emit(clearCode);
+        dict = new Map();
+        nextCode = eoiCode + 1;
+        codeSize = minCodeSize + 1;
+      } else {
+        if (nextCode >= (1 << codeSize)) codeSize++;
+        dict.set(key, nextCode++);
+      }
+      prefix = k;
+    }
+    emit(prefix);
+    emit(eoiCode);
+    if (bitCnt > 0) pushByte(bitBuf & 0xff);
+
+    const out = new Uint8Array(1 + bl + Math.ceil(bl / 255) + 1);
+    out[0] = minCodeSize;
+    let o = 1;
+    for (let i = 0; i < bl; i += 255) {
+      const n = Math.min(255, bl - i);
+      out[o++] = n;
+      out.set(body.subarray(i, i + n), o);
+      o += n;
+    }
+    out[o++] = 0;
+    return out.subarray(0, o);
+  }
+  // ====== GIF-ENCODER-END ======
+
+  // ========= 上传 =========
+  uploadBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.type && !/^image\//.test(file.type)) { setStatus('请选择图片文件', 'warn'); return; }
+    setStatus('图片加载中...', 'busy');
+    const reader = new FileReader();
+    reader.onerror = () => { setStatus('文件读取失败', 'warn'); };
+    reader.onload = (ev) => {
+      const next = new Image();
+      next.onerror = () => { setStatus('图片解码失败，换一张试试', 'warn'); };
+      next.onload = () => {
+        img = next;
+        const maxDim = 600;
+        const scale = Math.min(maxDim / next.width, maxDim / next.height, 1);
+        imgW = Math.max(1, Math.round(next.width * scale));
+        imgH = Math.max(1, Math.round(next.height * scale));
+        canvas.width = imgW;
+        canvas.height = Math.round(imgH * HEAD_ROOM);
+        hasImage = true;
+        isLooping = false;
+        isAnimating = false;
+        finishing = false;
+        bounceCount = 0; settleTime = 0;
+        position = 0; velocity = 0; lastTime = 0;
+        setBounceBtn(false);
+        canvas.style.display = 'block';
+        emptyTip.style.display = 'none';
+        drawFrame(0);
+        if (stage && stage.classList) stage.classList.add('ready');
+        setStatus('图片就绪，点击画面开始连续弹跳', 'ok');
+        console.log('图片就绪 画布', canvas.width, 'x', canvas.height, ' 图片', imgW, 'x', imgH);
+      };
+      next.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ========= 交互：点一次开始连弹，再点一次停 =========
+  canvas.addEventListener('click', toggleBounce);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); toggleBounce(); }, { passive: false });
+  bounceBtn.addEventListener('click', toggleBounce);
+
+  function toggleBounce() {
+    if (!hasImage) { setStatus('请先上传图片', 'warn'); return; }
+    if (isRecording) return;
+    if (isLooping) stopLoop();
+    else startLoop();
+  }
+
+  function startLoop() {
+    isLooping = true;
+    isAnimating = true;
+    finishing = false;
+    bounceCount = 0;
+    settleTime = 0;
+    lastTime = 0;
+    inject();                                     // 立刻起跳
+    setBounceBtn(true);
+    setRunning(true);
+    setStatus('连续弹跳中 · 第 1 次', 'go');
+  }
+
+  function stopLoop() {
+    isLooping = false;
+    finishing = true;
+    setBounceBtn(false);
+    setRunning(false);
+    if (!isAnimating || (Math.abs(velocity) < EPS_V && Math.abs(position) < EPS_P)) {
+      isAnimating = false;
+      finishing = false;
+      position = 0; velocity = 0;
+      drawFrame(0);
+      setStatus('已停止', 'idle');
+    } else {
+      setStatus('停止中...', 'busy');            // 让这一下快速收住
+    }
+  }
+
+  function setBounceBtn(running) {
+    bounceBtn.textContent = running ? '⏹ 停止连弹' : '👆 开始连弹';
+    bounceBtn.classList.toggle('on', running);
+  }
+
+  // ========= 绘制 =========
+  function paintBackground() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);   // 填白：屏幕和 GIF 背景一致，且 GIF 不透明
+  }
+
+  // position: 归一化位移；返回本帧使用的挤压/拉伸参数，便于调试
+  function drawFrame(pos) {
+    if (!img) return null;
+    const strength = clamp(Number(strengthInput.value) || 0.7, 0.1, 0.8);
+    const d = clamp(pos / PEAK, -1.6, 1.6);                       // 归一化到 [-1,1]
+    const squash = clamp(1 - d * strength * SQUASH_GAIN, SQUASH_MIN, SQUASH_MAX);
+    const stretch = 1 / squash;
+    const lift = Math.max(0, pos) * canvas.height * LIFT_RATIO;   // 只向上抬，底边不会越界
+    paintBackground();
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height - lift);
+    ctx.scale(squash, stretch);
+    ctx.drawImage(img, -imgW / 2, -imgH, imgW, imgH);
+    ctx.restore();
+    return { squash, stretch, lift };
+  }
+
+  // ========= 动画主循环 =========
+  function animateLoop(timestamp) {
+    requestAnimationFrame(animateLoop);          // 先排下一帧：本帧就算抛错也不会让循环死掉
+    try {
+      const now = (typeof timestamp === 'number') ? timestamp : performance.now();
+      if (!lastTime) lastTime = now;
+      let dt = (now - lastTime) / 1000;
+      lastTime = now;
+      if (!Number.isFinite(dt) || dt <= 0) dt = 1 / 60;
+      dt = Math.min(dt, MAX_DT);
+
+      if (!hasImage || !isAnimating || isRecording) return;   // 静止时不重复重绘
+
+      const speed = clamp(Number(speedInput.value) || 1, 0.3, 2);
+      const damping = clamp(Number(dampingInput.value) || 0.92, 0.8, 0.98);
+      const dampingEff = finishing ? Math.min(damping, 0.86) : damping;   // 点停止后快速收住
+      const sdt = dt * speed;                                  // 速度滑杆 = 时间缩放，物理保持一致
+
+      const injected = stepPhysics(sdt, dampingEff, isLooping);
+      const info = drawFrame(position);
+      if (injected) setStatus('连续弹跳中 · 第 ' + bounceCount + ' 次', 'go');
+
+      if (++frameNo % 30 === 0 && info) {
+        console.log('pos', position.toFixed(3), 'vel', velocity.toFixed(3),
+                    'squash', info.squash.toFixed(3), 'stretch', info.stretch.toFixed(3),
+                    isLooping ? '(连弹 ' + bounceCount + ')' : '');
+      }
+
+      // 只有「非连弹」时才真正收尾
+      if (!isLooping && Math.abs(velocity) < EPS_V && Math.abs(position) < EPS_P) {
+        isAnimating = false;
+        finishing = false;
+        position = 0; velocity = 0;
+        drawFrame(0);
+        setRunning(false);
+        setStatus('回弹结束', 'ok');
+      }
+    } catch (err) {
+      // 任何绘制异常都不该让动画永久停摆
+      console.error('动画帧出错：', err);
+    }
+  }
+  requestAnimationFrame(animateLoop);
+
+  // ========= GIF 导出：内置编码器，录整数个完整循环 =========
+  gifBtn.addEventListener('click', async () => {
+    if (!hasImage) { setStatus('请先上传图片', 'warn'); return; }
+    if (isRecording) return;
+
+    const wasLooping = isLooping;
+    gifBtn.disabled = true;
+    isRecording = true;          // 关键：导出期间暂停实时循环，避免两套绘制抢同一个画布
+    isAnimating = false;
+    setRunning(false);
+    setStatus('准备导出GIF...', 'busy');
+
+    const frameDelay = 40;                        // 25fps
+    const delayCs = Math.round(frameDelay / 10);  // GIF 延时单位是 1/100 秒
+    const dt = frameDelay / 1000;                 // 步长与帧延时一致 → GIF 播放速度 = 实时速度
+    const speed = clamp(Number(speedInput.value) || 1, 0.3, 2);
+    const damping = clamp(Number(dampingInput.value) || 0.92, 0.8, 0.98);
+    const maxFrames = 90;
+
+    try {
+      // 1) 准备离屏画布：按 GIF_MAX_SIDE 缩放，控制体积与编码耗时
+      const gscale = Math.min(1, GIF_MAX_SIDE / Math.max(canvas.width, canvas.height));
+      const gw = Math.max(2, Math.round(canvas.width * gscale));
+      const gh = Math.max(2, Math.round(canvas.height * gscale));
+      const gcv = document.createElement('canvas');
+      gcv.width = gw; gcv.height = gh;
+      const gctx = gcv.getContext('2d');
+      const shot = () => {
+        gctx.drawImage(canvas, 0, 0, gw, gh);
+        return gctx.getImageData(0, 0, gw, gh).data;
+      };
+
+      // 2) 先空跑一跳，量出「一次弹跳」占多少帧 → 决定录几个完整循环
+      position = 0; velocity = V0; bounceCount = 0; settleTime = 0;
+      let cycleFrames = 0;
+      const savedBounce = bounceCount;
+      for (let i = 0; i < maxFrames; i++) {
+        if (stepPhysics(dt * speed, damping, true)) { cycleFrames = i + 1; break; }
+      }
+      bounceCount = savedBounce;
+      const targetCycles = cycleFrames > 0 ? clamp(Math.round(60 / cycleFrames), 1, 3) : 1;
+      console.log('一次弹跳约', cycleFrames, '帧 → 录', targetCycles, '个循环');
+
+      // 3) 采几帧画面建调色板（含起跳、拉升、落地压扁三种形态）
+      setStatus('分析颜色...', 'busy');
+      const samples = [];
+      for (const p of [0, PEAK * 0.9, -PEAK * 0.5]) {
+        drawFrame(p);
+        samples.push(shot());
+        await sleep(0);
+      }
+      const palette = buildPalette(samples, GIF_MAX_COLORS);
+      const map = makeMapper(palette);
+
+      // 4) 渲染每一帧并量化成索引
+      const frames = [];
+      position = 0; velocity = V0; settleTime = 0;
+      let injections = 0;
+      for (let i = 0; i < maxFrames; i++) {
+        const injected = stepPhysics(dt * speed, damping, true);
+        if (injected) {
+          injections++;
+          if (injections >= targetCycles) break;   // 收满整数个循环，首尾同相位
+        }
+        drawFrame(position);
+        frames.push(quantizeFrame(shot(), gw, gh, map));
+        setStatus('渲染帧 ' + frames.length + ' ...', 'busy');
+        await sleep(0);
+      }
+      if (!frames.length) throw new Error('没有录到任何帧');
+
+      // 5) 编码
+      const { bits, head } = gifHeader(gw, gh, palette);
+      const parts = [head, gifLoopExt()];
+      for (let i = 0; i < frames.length; i++) {
+        const fp = gifFrameParts(gw, gh, frames[i], delayCs, bits);
+        parts.push(fp[0], fp[1], fp[2]);
+        setStatus('编码 GIF ' + Math.round((i + 1) / frames.length * 100) + '%', 'busy');
+        await sleep(0);
+      }
+      parts.push(gifTrailer());
+      const blob = new Blob(parts, { type: 'image/gif' });
+
+      // 6) 下载
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'q弹连跳.gif';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);   // 立刻 revoke 有的浏览器会把下载取消掉
+      setStatus('GIF导出完成：' + frames.length + '帧 ' + gw + '×' + gh +
+                ' ' + (blob.size / 1024).toFixed(0) + 'KB', 'ok');
+      console.log('GIF导出完成', frames.length, '帧', gw + 'x' + gh, (blob.size / 1024).toFixed(0) + 'KB',
+                  '调色板', palette.length, '色');
+    } catch (err) {
+      console.error(err);
+      setStatus('GIF导出失败：' + ((err && err.message) || err), 'warn');
+    } finally {
+      isRecording = false;
+      gifBtn.disabled = false;
+      position = 0; velocity = 0; isAnimating = false; lastTime = 0; settleTime = 0; finishing = false;
+      if (wasLooping) {
+        startLoop();            // 导出前就在连弹 → 导出完自动接着弹
+      } else {
+        isLooping = false;
+        setBounceBtn(false);
+        drawFrame(0);
+      }
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
